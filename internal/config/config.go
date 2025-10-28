@@ -10,6 +10,7 @@ import (
 // Config holds application configuration values.
 type Config struct {
 	Port           string
+	GRPCPort       string
 	MongoURI       string
 	MongoDatabase  string
 	JWTSecret      string
@@ -23,6 +24,7 @@ type Config struct {
 func Load() (Config, error) {
 	cfg := Config{
 		Port:           getEnv("PORT", "8080"),
+		GRPCPort:       getEnv("GRPC_PORT", "50051"),
 		MongoURI:       getEnv("MONGO_URI", "mongodb://localhost:27017"),
 		MongoDatabase:  getEnv("MONGO_DB", "user_service"),
 		JWTSecret:      os.Getenv("JWT_SECRET"),

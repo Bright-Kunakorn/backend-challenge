@@ -101,3 +101,11 @@ Use Go’s `testing` package. Mock MongoDB where possible.
 - Bonus: gRPC, Docker, validation, shutdown
 - Testing coverage and mocking
 - Use of idiomatic Go
+
+---
+
+## Make Targets
+
+- `make start` – Build containers and launch the stack in the background (`docker-compose up --build -d`).
+- `make smoke` – Run the automated REST smoke test (`scripts/api-smoke.sh`) against `http://localhost:8080`.
+- `make stop` – Stop and remove containers (`docker-compose down`).

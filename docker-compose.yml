@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      PORT: 8080
+      GRPC_PORT: 50051
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: user_service
+      JWT_SECRET: super-secret-value
+      JWT_ISSUER: backend-challenge
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:6
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongo_data:

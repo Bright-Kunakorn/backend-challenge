@@ -1,0 +1,10 @@
+Dockerfile
+.dockerignore
+.git
+.gitignore
+bin
+tmp
+vendor
+*.test
+*.log
+.env

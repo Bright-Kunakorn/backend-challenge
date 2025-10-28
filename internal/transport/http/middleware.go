@@ -1,29 +1,14 @@
 package http
 
 import (
-	"context"
 	"log"
 	stdhttp "net/http"
 	"strings"
 	"time"
 
 	jwtinfra "backend-challenge/internal/infrastructure/jwt"
+	"backend-challenge/internal/transport/authctx"
 )
-
-type contextKey string
-
-const userIDContextKey contextKey = "userID"
-
-// WithUserID injects the user ID into the context.
-func WithUserID(ctx context.Context, userID string) context.Context {
-	return context.WithValue(ctx, userIDContextKey, userID)
-}
-
-// UserIDFromContext extracts the user id.
-func UserIDFromContext(ctx context.Context) (string, bool) {
-	val, ok := ctx.Value(userIDContextKey).(string)
-	return val, ok
-}
 
 // LoggingMiddleware logs method, path, status, and duration.
 func LoggingMiddleware(next stdhttp.Handler) stdhttp.Handler {
@@ -58,7 +43,7 @@ func AuthMiddleware(manager *jwtinfra.Manager) func(stdhttp.Handler) stdhttp.Han
 				return
 			}
 
-			ctx := WithUserID(r.Context(), userID)
+			ctx := authctx.WithUserID(r.Context(), userID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

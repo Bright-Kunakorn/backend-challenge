@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"backend-challenge/internal/application"
 	"backend-challenge/internal/domain"
 	jwtinfra "backend-challenge/internal/infrastructure/jwt"
+	"backend-challenge/internal/transport/authctx"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -55,6 +57,9 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	payload.Name = strings.TrimSpace(payload.Name)
+	payload.Email = strings.TrimSpace(strings.ToLower(payload.Email))
+
 	user, err := h.service.Register(r.Context(), application.RegisterInput{
 		Name:     payload.Name,
 		Email:    payload.Email,
@@ -84,6 +89,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid payload", http.StatusBadRequest)
 		return
 	}
+
+	payload.Email = strings.TrimSpace(strings.ToLower(payload.Email))
 
 	user, err := h.service.Authenticate(r.Context(), payload.Email, payload.Password)
 	if err != nil {
@@ -133,7 +140,7 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 // UpdateUser updates allowed fields.
 func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	if authID, ok := UserIDFromContext(r.Context()); ok && authID != id {
+	if authID, ok := authctx.UserIDFromContext(r.Context()); ok && authID != id {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
@@ -141,6 +148,16 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "invalid payload", http.StatusBadRequest)
 		return
+	}
+
+	if payload.Name != nil {
+		trimmed := strings.TrimSpace(*payload.Name)
+		payload.Name = &trimmed
+	}
+
+	if payload.Email != nil {
+		trimmed := strings.TrimSpace(strings.ToLower(*payload.Email))
+		payload.Email = &trimmed
 	}
 
 	updated, err := h.service.Update(r.Context(), id, application.UpdateInput{
@@ -158,7 +175,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 // DeleteUser removes a user.
 func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	if authID, ok := UserIDFromContext(r.Context()); ok && authID != id {
+	if authID, ok := authctx.UserIDFromContext(r.Context()); ok && authID != id {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}

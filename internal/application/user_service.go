@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"backend-challenge/internal/domain"
@@ -35,11 +36,14 @@ type UpdateInput struct {
 
 // Register creates a new user with hashed password.
 func (s *UserService) Register(ctx context.Context, input RegisterInput) (domain.User, error) {
-	if err := domain.ValidateNewUser(input.Name, input.Email, input.Password); err != nil {
+	name := strings.TrimSpace(input.Name)
+	email := strings.TrimSpace(strings.ToLower(input.Email))
+
+	if err := domain.ValidateNewUser(name, email, input.Password); err != nil {
 		return domain.User{}, err
 	}
 
-	if _, err := s.repo.GetByEmail(ctx, input.Email); err == nil {
+	if _, err := s.repo.GetByEmail(ctx, email); err == nil {
 		return domain.User{}, ErrDuplicateEmail
 	} else if !errors.Is(err, ErrNotFound) && err != nil {
 		// For errors other than not found, propagate.
@@ -53,8 +57,8 @@ func (s *UserService) Register(ctx context.Context, input RegisterInput) (domain
 
 	now := time.Now().UTC()
 	user := domain.User{
-		Name:      input.Name,
-		Email:     input.Email,
+		Name:      name,
+		Email:     email,
 		Password:  string(hashed),
 		CreatedAt: now,
 	}
@@ -71,6 +75,7 @@ func (s *UserService) Register(ctx context.Context, input RegisterInput) (domain
 
 // Authenticate verifies credentials and returns the user.
 func (s *UserService) Authenticate(ctx context.Context, email, password string) (domain.User, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
 	if err := domain.ValidateCredentials(email, password); err != nil {
 		return domain.User{}, ErrInvalidCredentials
 	}
@@ -105,17 +110,19 @@ func (s *UserService) Update(ctx context.Context, id string, input UpdateInput) 
 	update := domain.UpdateUser{}
 
 	if input.Name != nil {
-		if err := domain.ValidateName(*input.Name); err != nil {
+		name := strings.TrimSpace(*input.Name)
+		if err := domain.ValidateName(name); err != nil {
 			return domain.User{}, err
 		}
-		update.Name = input.Name
+		update.Name = &name
 	}
 
 	if input.Email != nil {
-		if err := domain.ValidateEmail(*input.Email); err != nil {
+		email := strings.TrimSpace(strings.ToLower(*input.Email))
+		if err := domain.ValidateEmail(email); err != nil {
 			return domain.User{}, err
 		}
-		update.Email = input.Email
+		update.Email = &email
 	}
 
 	if update.Name == nil && update.Email == nil {
