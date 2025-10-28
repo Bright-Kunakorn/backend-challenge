@@ -13,8 +13,12 @@ services:
       MONGO_DB: user_service
       JWT_SECRET: super-secret-value
       JWT_ISSUER: backend-challenge
+      ELASTIC_APM_SERVICE_NAME: backend-challenge
+      ELASTIC_APM_ENVIRONMENT: development
+      ELASTIC_APM_SERVER_URL: http://apm-server:8200
     depends_on:
       - mongo
+      - apm-server
     restart: unless-stopped
 
   mongo:
@@ -25,5 +29,38 @@ services:
       - mongo_data:/data/db
     restart: unless-stopped
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+
+  apm-server:
+    image: docker.elastic.co/apm/apm-server:8.12.0
+    depends_on:
+      - elasticsearch
+    environment:
+      - 'output.elasticsearch.hosts=["http://elasticsearch:9200"]'
+      - 'apm-server.host=0.0.0.0:8200'
+    ports:
+      - "8200:8200"
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    depends_on:
+      - elasticsearch
+    environment:
+      - 'ELASTICSEARCH_HOSTS=["http://elasticsearch:9200"]'
+    ports:
+      - "5601:5601"
+    restart: unless-stopped
+
 volumes:
   mongo_data:
+  es_data:

@@ -19,6 +19,9 @@ import (
 	grpcsvc "backend-challenge/internal/transport/grpcsvc"
 	transport "backend-challenge/internal/transport/http"
 
+	"go.elastic.co/apm/module/apmgrpc/v2"
+	"go.elastic.co/apm/module/apmmongo/v2"
+	"go.elastic.co/apm/v2"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/sync/errgroup"
@@ -33,7 +36,11 @@ func main() {
 		log.Fatalf("load config: %v", err)
 	}
 
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(cfg.MongoURI))
+	mongoOpts := options.Client().
+		ApplyURI(cfg.MongoURI).
+		SetMonitor(apmmongo.CommandMonitor())
+
+	client, err := mongo.Connect(context.Background(), mongoOpts)
 	if err != nil {
 		log.Fatalf("connect to mongo: %v", err)
 	}
@@ -68,7 +75,10 @@ func main() {
 	defer grpcListener.Close()
 
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(grpcsvc.AuthUnaryInterceptor(jwtManager)),
+		grpc.ChainUnaryInterceptor(
+			apmgrpc.NewUnaryServerInterceptor(),
+			grpcsvc.AuthUnaryInterceptor(jwtManager),
+		),
 	)
 	grpcService := grpcsvc.NewUserServer(userService, jwtManager)
 	grpcService.Register(grpcServer)
@@ -158,7 +168,11 @@ func runUserCountWorker(ctx context.Context, service *application.UserService, i
 			return
 		case <-ticker.C:
 			countCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			count, err := service.Count(countCtx)
+			span, spanCtx := apm.StartSpan(countCtx, "user.count", "worker")
+			count, err := service.Count(spanCtx)
+			if span != nil {
+				span.End()
+			}
 			cancel()
 			if err != nil {
 				log.Printf("user count worker error: %v", err)
