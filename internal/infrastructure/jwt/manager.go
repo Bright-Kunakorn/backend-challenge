@@ -62,8 +62,12 @@ func (m *Manager) ValidateToken(token string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := claims.Valid(); err != nil {
-		return "", err
+	now := time.Now().UTC()
+	if claims.ExpiresAt != nil && now.After(claims.ExpiresAt.Time) {
+		return "", errors.New("token expired")
+	}
+	if claims.NotBefore != nil && now.Before(claims.NotBefore.Time) {
+		return "", errors.New("token not yet valid")
 	}
 	return claims.Subject, nil
 }

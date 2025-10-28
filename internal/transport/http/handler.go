@@ -43,7 +43,7 @@ type updateRequest struct {
 }
 
 type authResponse struct {
-	Token string           `json:"token"`
+	Token string            `json:"token"`
 	User  domain.UserPublic `json:"user"`
 }
 
@@ -133,6 +133,10 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 // UpdateUser updates allowed fields.
 func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	if authID, ok := UserIDFromContext(r.Context()); ok && authID != id {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
 	var payload updateRequest
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "invalid payload", http.StatusBadRequest)
@@ -154,6 +158,10 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 // DeleteUser removes a user.
 func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	if authID, ok := UserIDFromContext(r.Context()); ok && authID != id {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
 	if err := h.service.Delete(r.Context(), id); err != nil {
 		handleError(w, err)
 		return
