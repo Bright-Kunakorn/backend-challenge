@@ -11,6 +11,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+	generateFromPassword   = bcrypt.GenerateFromPassword
+	compareHashAndPassword = bcrypt.CompareHashAndPassword
+)
+
 // UserService coordinates user use-cases.
 type UserService struct {
 	repo UserRepository
@@ -50,7 +55,7 @@ func (s *UserService) Register(ctx context.Context, input RegisterInput) (domain
 		return domain.User{}, err
 	}
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	hashed, err := generateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return domain.User{}, err
 	}
@@ -88,7 +93,7 @@ func (s *UserService) Authenticate(ctx context.Context, email, password string) 
 		return domain.User{}, err
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+	if err := compareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return domain.User{}, ErrInvalidCredentials
 	}
 
